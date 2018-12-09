@@ -23,6 +23,7 @@ class frame(object):
         self._pred = pred
         self._succ = None
         self._stack = _eval_stack()
+        self._stat = 'init'
 
     def _append_new(self):
         assert self._succ == None 
@@ -61,14 +62,29 @@ class frame(object):
             cur = cur._pred
         return cur
 
-    def dec_active(meth):
-        @wraps(meth)
-        def _wrapper(self, *args, **kargs):
-            if not self.is_last:
-                raise RuntimeError('frame is not active')
-            return meth(self, *args, **kargs)
-        return _wrapper
+    def dec_stat(stat):
+        def _dec(meth):
+            @wraps(meth)
+            def _wrapper(self, *args, **kargs):
+                if not self._stat == stat:
+                    raise RuntimeError('frame is not ' + stat)
+                return meth(self, *args, **kargs)
+            return _wrapper
+        return _dec
 
-    @dec_active
-    def eval(self):
-        pass
+    @dec_stat('init')
+    def raw(self, code):
+        for elamb in code:
+            self._stack.push(elamb)
+        self._stat = 'ready'
+
+    @dec_stat('ready')
+    def eval_gen(self):
+        succ = self.succ
+        self._stat = 'run'
+        for elamb in self._stack.walk_gen():
+            yield
+        self.succ._stat = 'ready'
+        self._stat = 'done'
+
+
