@@ -40,27 +40,31 @@ class _replace_table(object):
     def __init__(self):
         pass
 
+class _eval_scanner(object):
+
+    def __init__(self, seq_in, tab_rep):
+        self._src = seq_in.walk_gen()
+        self._out = _eval_seq()
+        self._tab = tab_rep
+        self._stat = 'init'
+
+    def _find_act_op(self, src, out):
+        while self._src.next():
+            if self._src.cur.can('feed') and self._src.peek.can('eval'):
+                break
+            self._out.append(self._src.cur)
+
+    def scan(self):
+        self._find_act_op()
+        eval_op = self._src.next()
+        if not eval_op:
+            return
+
 class evmac(object):
 
     def __init__(self, seq_in):
         self._seq_in = seq_in
         self._tab_rep = _replace_table()
-
-    def _find_act_op(self, src, out):
-        while src.next():
-            if src.cur.can('feed') and src.peek.can('eval'):
-                src.next()
-                break
-            out.append(src.cur)
-
-    def _scan_1(self):
-        src = seq_in.walk_gen()
-        seq_out = _eval_seq()
-        self._find_act_op(src, seq_out)
-        eval_op = src.cur
-        if not eval_op:
-            return
-        
 
     def eval(self):
         pass
