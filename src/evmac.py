@@ -5,11 +5,12 @@ class _es_iter(object):
 
     def __init__(self, src):
         self._iter = iter(src)
+        self._cur = None
         self._peek = None
-        self.next()
 
     @property
     def cur(self):
+        assert self._cur
         return self._cur
 
     @property
@@ -23,16 +24,13 @@ class _es_iter(object):
         self._peek = None
         return self.cur
 
-class _eval_stack(object):
+class _eval_seq(object):
 
     def __init__(self):
         self._seq = []
 
-    def push(self, dst):
+    def append(self, dst):
         self._seq.append(dst)
-
-    def pop(self):
-        return self._seq.pop()
 
     def walk_gen(self):
         return _es_iter(self._seq)
@@ -48,17 +46,21 @@ class evmac(object):
         self._seq_in = seq_in
         self._tab_rep = _replace_table()
 
-    def _find_act_op(self, src):
-        seq_out = _eval_stack()
-        while src.cur:
-            if not src.cur.can('eval'):
+    def _find_act_op(self, src, out):
+        while src.next():
+            if src.cur.can('feed') and src.peek.can('eval'):
+                src.next()
                 break
-            src.next()
-        return src
+            out.append(src.cur)
 
     def _scan_1(self):
         src = seq_in.walk_gen()
-        self._find_act_op(src)
+        seq_out = _eval_seq()
+        self._find_act_op(src, seq_out)
+        eval_op = src.cur
+        if not eval_op:
+            return
+        
 
     def eval(self):
         pass
