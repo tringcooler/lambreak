@@ -5,13 +5,11 @@ class _es_iter(object):
 
     def __init__(self, src):
         self._iter = iter(src)
-        self._cur = None
         self._peek = None
+        self.next()
 
     @property
     def cur(self):
-        if not self._cur:
-            self.next()
         return self._cur
 
     @property
@@ -53,7 +51,7 @@ class evmac(object):
     def _find_act_op(self, src):
         seq_out = _eval_stack()
         while src.cur:
-            if not src.cur.is('eval'):
+            if not src.cur.can('eval'):
                 break
             src.next()
         return src
