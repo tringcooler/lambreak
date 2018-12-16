@@ -1,7 +1,7 @@
 #! python3
 # coding: utf-8
 
-class opelem(object):
+class elamb(object):
 
     def __init__(self):
         pass
