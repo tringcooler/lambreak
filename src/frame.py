@@ -3,20 +3,6 @@
 
 from functools import wraps
 
-class _eval_stack(object):
-
-    def __init__(self):
-        self._seq = []
-
-    def push(self, dst):
-        self._seq.append(dst)
-
-    def pop(self):
-        return self._seq.pop()
-
-    def walk_gen(self):
-        return iter(self._seq)
-
 class frame(object):
 
     def __init__(self, pred = None):
