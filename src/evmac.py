@@ -44,21 +44,35 @@ class _eval_scanner(object):
 
     def __init__(self, seq_in, tab_rep):
         self._src = seq_in.walk_gen()
-        self._out = _eval_seq()
-        self._tab = tab_rep
+        self.out = _eval_seq()
+        self.tab = tab_rep
         self._stat = 'init'
+        self._op = None
+        self.op_stat = 'none'
 
-    def _find_act_op(self, src, out):
-        while self._src.next():
-            if self._src.cur.can('feed') and self._src.peek.can('eval'):
-                break
-            self._out.append(self._src.cur)
+    def _find_act_op(self):
+        if self._src.cur.can('feed') and self._src.peek.can('eval'):
+            self._stat = 'eval'
+        self.out.append(self._src.cur)
+
+    def _eval_op(self):
+        self._op = self._src.cur
+        self._op.eval(self)
+        if self._op.can('take'):
+            self._stat = 'take'
+        else:
+            pass
 
     def scan(self):
-        self._find_act_op()
-        eval_op = self._src.next()
-        if not eval_op:
-            return
+        while self._src.next():
+            if self._stat == 'init':
+                self._find_act_op()
+            elif self._stat == 'eval':
+                self._eval_op()
+            
+            if not self.op_stat[:3] == 'none':
+                pass
+                    
 
 class evmac(object):
 
