@@ -11,12 +11,12 @@ class _es_iter(object):
 
     @property
     def cur(self):
-        assert self._cur
+        #assert self._cur
         return self._cur
 
     @property
     def peek(self):
-        if not self._peek:
+        if self._peek is None:
             if self._ahead:
                 self._peek = self._ahead.pop()
             else:
