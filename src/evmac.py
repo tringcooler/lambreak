@@ -7,6 +7,7 @@ class _es_iter(object):
         self._iter = iter(src)
         self._cur = None
         self._peek = None
+        self._ahead = []
 
     @property
     def cur(self):
@@ -16,13 +17,21 @@ class _es_iter(object):
     @property
     def peek(self):
         if not self._peek:
-            self._peek = next(self._iter, None)
+            if self._ahead:
+                self._peek = self._ahead.pop()
+            else:
+                self._peek = next(self._iter, None)
         return self._peek
 
     def next(self):
         self._cur = self.peek
         self._peek = None
         return self.cur
+
+    def ahead(self, val):
+        if self._peek:
+            self._ahead.append(self._peek)
+        self._peek = val
 
 class _eval_seq(object):
 
@@ -49,7 +58,7 @@ class _base_pool(object):
     def reset(self):
         self._cur = self._base
 
-    def @property
+    @property
     def base(self):
         return self._base
 
