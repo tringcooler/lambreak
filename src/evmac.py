@@ -1,6 +1,8 @@
 #! python3
 # coding: utf-8
 
+from opex import *
+
 class _es_iter(object):
 
     def __init__(self, src):
@@ -98,16 +100,24 @@ class _eval_scanner(object):
             self._stat = 'eval'
         self.out.append(self._src.cur)
 
-    def _eval_op(self):
-        op = self._src.cur
+    def _eval_op(self, op = None):
+        if op is None:
+            op = self._src.cur
         nxop = self._src.peek
-        op.eval(out, pool, nxop)
+        try:
+            op.eval(out, pool, nxop)
+        except opex_scan_done:
+            return True
+        except opex_scan_bypass:
+            if not self._src.next():
+                return True
+            return self._eval_op(op)
+        return False
 
     def scan(self):
         self.pool.reset()
         while self._src.next():
-            self._eval_op()
-            if self.pool.cur is None:
+            if self._eval_op():
                 break
 
 class evmac(object):
