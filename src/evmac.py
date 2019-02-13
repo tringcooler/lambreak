@@ -35,6 +35,10 @@ class _es_iter(object):
             self._ahead.append(self._peek)
         self._peek = val
 
+    def second(self, val):
+        self.peek
+        self._ahead.append(val)
+
 class _eval_seq(object):
 
     def __init__(self):
@@ -103,9 +107,8 @@ class _eval_scanner(object):
     def _eval_op(self, op = None):
         if op is None:
             op = self._src.cur
-        nxop = self._src.peek
         try:
-            op.eval(out, pool, nxop)
+            op.eval(self.out, self.pool, self._src)
         except opex_scan_done:
             return True
         except opex_scan_bypass:
