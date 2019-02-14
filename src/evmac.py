@@ -46,6 +46,9 @@ class _eval_seq(object):
 
     def append(self, dst):
         self._seq.append(dst)
+    
+    def pop(self):
+        self._seq.pop()
 
     def walk_gen(self):
         return _es_iter(self._seq)
@@ -104,17 +107,17 @@ class _eval_scanner(object):
             self._stat = 'eval'
         self.out.append(self._src.cur)
 
-    def _eval_op(self, op = None):
+    def _eval_op(self, op = None, t = 0):
         if op is None:
             op = self._src.cur
         try:
-            op.eval(self.out, self.pool, self._src)
+            op.eval(self.out, self.pool, self._src, t)
         except opex_scan_done:
             return True
         except opex_scan_bypass:
             if not self._src.next():
                 return True
-            return self._eval_op(op)
+            return self._eval_op(op, t + 1)
         return False
 
     def scan(self):
