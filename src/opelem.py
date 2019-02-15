@@ -19,9 +19,14 @@ class opelem(object):
     def __repr__(self):
         return '<op:' + self._id + '>'
 
-class tmpop(opelem):
+class var(opelem):
+    
+    def __init__(self, id):
+        super(var, self).__init__('var_' + id)
+        self.name = id
+    
     def eval(self, out, pool, srci, t = 0):
-        super(tmpop, self).eval(out, pool, srci, t)
+        super(var, self).eval(out, pool, srci, t)
         self.outself(out, t)
 
 class comb_sym(opelem):
@@ -80,7 +85,9 @@ class expr_bypass(expr_sym):
     def eval(self, out, pool, srci, t = 0):
         super(expr_bypass, self).eval(out, pool, srci, t)
         self.outself(out, t)
-        if t == 0 or pool.get('expr_cnt', 0) > 0:
+        if t == 0:
+            pool.cur['expr_st_cnt'] = pool.get('expr_cnt', 0)
+        if t == 0 or pool.get('expr_cnt', 0) > pool.get('expr_st_cnt', 0):
             nxop = srci.peek
             if nxop:
                 if isinstance(nxop, expr_sym):
@@ -110,6 +117,49 @@ class expr_end(expr_rng):
         super(expr_end, self).eval(out, pool, srci, t)
         pool.cur['expr_cnt'] = pool.get('expr_cnt', 0) - 1
 
+class stack_sym(opelem):
+    
+    def _stack(self, pool):
+        stack = pool.get_base('__evm_stack', [])
+        pool.base['__evm_stack'] = stack
+        return stack
+    
+    def _shallow_clone(self, src):
+        return {k: src[k] for k in src if k[:5] != '__evm'}
+    
+    def stack_push(self, pool):
+        cur = self._shallow_clone(pool.cur)
+        self._stack(pool).append(cur)
+        pool.cur = cur
+    
+    def stack_pop(self, pool):
+        stack = self._stack(pool)
+        if len(stack) == 0:
+            raise opex_error_syntax()
+        stack.pop()
+        if len(stack) > 0:
+            pool.cur = stack[-1]
+        else:
+            pool.reset()
+
+class stack_reg(stack_sym):
+    
+    def __init__(self):
+        super(stack_reg, self).__init__('stack_reg')
+    
+    def eval(self, out, pool, srci, t = 0):
+        super(stack_reg, self).eval(out, pool, srci, t)
+        self.stack_push(pool)
+
+class stack_rel(stack_sym):
+    
+    def __init__(self):
+        super(stack_rel, self).__init__('stack_rel')
+    
+    def eval(self, out, pool, srci, t = 0):
+        super(stack_rel, self).eval(out, pool, srci, t)
+        self.stack_pop(pool)
+
 class rtab_sym(opelem):
     pass
 
@@ -120,7 +170,12 @@ class rtab_reg(rtab_sym):
     
     def eval(self, out, pool, srci, t = 0):
         super(rtab_reg, self).eval(out, pool, srci, t)
-        
+        if t > 0:
+            return
+        nxop = srci.peek
+        if not isinstance(nxop, var):
+            raise opex_error_syntax()
+        vname = nxop.name
 
 if __name__ == '__main__':
     from evmac import _eval_seq, _eval_scanner, _base_pool
@@ -142,17 +197,26 @@ if __name__ == '__main__':
         src_q = _eval_seq()
         src_q.append(comb())
         src_q.append(comb())
-        #src_q.append(comb_rcptr())
-        #src_q.append(tmpop('a0'))
+        src_q.append(comb_rcptr())
+        src_q.append(var('a0'))
         src_q.append(comb_rcptr_tbp())
         src_q.append(expr_bypass())
         src_q.append(expr_start())
-        src_q.append(tmpop('a1'))
+        src_q.append(var('a1'))
+        src_q.append(expr_start())
+        src_q.append(var('b1'))
+        src_q.append(expr_start())
+        src_q.append(var('c1'))
         src_q.append(expr_end())
-        src_q.append(tmpop('a2'))
+        src_q.append(expr_end())
+        src_q.append(expr_start())
+        src_q.append(var('b2'))
+        src_q.append(expr_end())
+        src_q.append(expr_end())
+        src_q.append(var('a2'))
         src_q.append(comb())
         src_q.append(comb_rcptr())
-        src_q.append(tmpop('a3'))
+        src_q.append(var('a3'))
         src_s = _eval_scanner(src_q, _base_pool())
         src_s.scan()
         print(src_s.out._seq)
