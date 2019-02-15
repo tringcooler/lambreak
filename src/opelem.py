@@ -9,13 +9,20 @@ class opelem(object):
         self._id = id
 
     def eval(self, out, pool, srci, t = 0):
-        stat = pool.get_base('stat', 'idle')
+        if t == 0:
+            print('eval', self._id)
+    
+    def outself(self, out, t):
         if t == 0:
             out.append(self)
-            print('eval', self._id)
     
     def __repr__(self):
         return '<op:' + self._id + '>'
+
+class tmpop(opelem):
+    def eval(self, out, pool, srci, t = 0):
+        super(tmpop, self).eval(out, pool, srci, t)
+        self.outself(out, t)
 
 class comb_sym(opelem):
     pass
@@ -29,6 +36,7 @@ class comb(comb_sym):
         super(comb, self).eval(out, pool, srci, t)
         pool.cur['comb_cnt'] = pool.get('comb_cnt', 0) + 1
         pool.cur['comb_ref'] = True
+        self.outself(out, t)
         
 class comb_rcptr(comb_sym):
 
@@ -37,8 +45,8 @@ class comb_rcptr(comb_sym):
 
     def eval(self, out, pool, srci, t = 0):
         super(comb_rcptr, self).eval(out, pool, srci, t)
-        print('comb')
         self.eval_comb(out, pool)
+        self.outself(out, t)
     
     def eval_comb(self, out, pool):
         if pool.get('comb_ref', False):
@@ -57,10 +65,9 @@ class comb_rcptr_tbp(comb_rcptr):
         super(comb_sym, self).eval(out, pool, srci, t)
         if self.eval_comb(out, pool):
             out.pop()
-            out.pop()
-            out.append(self)
             raise opex_scan_bypass()
-            
+        else:
+            self.outself(out, t)
 
 class expr_sym(opelem):
     pass
@@ -72,39 +79,35 @@ class expr_bypass(expr_sym):
     
     def eval(self, out, pool, srci, t = 0):
         super(expr_bypass, self).eval(out, pool, srci, t)
-        if t == 0:
-            self.eval_bypass(out, pool)
-            if self.eval_comb(out, pool):
-                out.pop()
-                out.pop()
-                out.append(self)
-            else:
-                self.bypass(out, pool, srci.peek)
-        else:
-            if pool.get('expr_cnt', 0) > 0:
-                self.bypass(out, pool, srci.peek)
+        self.outself(out, t)
+        if t == 0 or pool.get('expr_cnt', 0) > 0:
+            nxop = srci.peek
+            if nxop:
+                if isinstance(nxop, expr_sym):
+                    nxop.eval(out, pool, None, 0)
+                    print('expr', pool.get('expr_cnt', 0))
+                out.append(nxop)
+            raise opex_scan_bypass()
+
+class expr_rng(expr_sym):
+    pass
+
+class expr_start(expr_rng):
     
-    def eval_bypass(self, out, pool):
+    def __init__(self):
+        super(expr_start, self).__init__('expr_start')
+    
+    def eval(self, out, pool, srci, t = 0):
+        super(expr_start, self).eval(out, pool, srci, t)
         pool.cur['expr_cnt'] = pool.get('expr_cnt', 0) + 1
-        
-    def bypass(self, out, pool, nxop):
-        if nxop:
-            out.append(nxop)
-        if isinstance(nxop, expr_sym):
-            nxop.eval_bypass(out, pool)
-            print('expr', pool.get('expr_cnt', 0))
-        raise opex_scan_bypass()
-        
-class expr_end(expr_sym):
+
+class expr_end(expr_rng):
     
     def __init__(self):
         super(expr_end, self).__init__('expr_end')
     
     def eval(self, out, pool, srci, t = 0):
         super(expr_end, self).eval(out, pool, srci, t)
-        self.eval_bypass(out, pool)
-    
-    def eval_bypass(self, out, pool):
         pool.cur['expr_cnt'] = pool.get('expr_cnt', 0) - 1
 
 class rtab_sym(opelem):
@@ -139,15 +142,19 @@ if __name__ == '__main__':
         src_q = _eval_seq()
         src_q.append(comb())
         src_q.append(comb())
+        #src_q.append(comb_rcptr())
+        #src_q.append(tmpop('a0'))
+        src_q.append(comb_rcptr_tbp())
         src_q.append(expr_bypass())
-        src_q.append(opelem('a1'))
+        src_q.append(expr_start())
+        src_q.append(tmpop('a1'))
         src_q.append(expr_end())
-        src_q.append(opelem('a2'))
+        src_q.append(tmpop('a2'))
         src_q.append(comb())
         src_q.append(comb_rcptr())
-        src_q.append(opelem('a3'))
+        src_q.append(tmpop('a3'))
         src_s = _eval_scanner(src_q, _base_pool())
         src_s.scan()
         print(src_s.out._seq)
-    #test2()
+    test2()
 
