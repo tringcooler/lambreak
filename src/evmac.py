@@ -48,7 +48,7 @@ class _eval_seq(object):
         self._seq.append(dst)
     
     def pop(self):
-        self._seq.pop()
+        return self._seq.pop()
 
     def walk_gen(self):
         return _es_iter(self._seq)

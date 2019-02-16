@@ -19,16 +19,6 @@ class opelem(object):
     def __repr__(self):
         return '<op:' + self._id + '>'
 
-class var(opelem):
-    
-    def __init__(self, id):
-        super(var, self).__init__('var_' + id)
-        self.name = id
-    
-    def eval(self, out, pool, srci, t = 0):
-        super(var, self).eval(out, pool, srci, t)
-        self.outself(out, t)
-
 class comb_sym(opelem):
     pass
         
@@ -92,8 +82,11 @@ class expr_bypass(expr_sym):
             if nxop:
                 if isinstance(nxop, expr_sym):
                     nxop.eval(out, pool, None, 0)
-                    print('expr', pool.get('expr_cnt', 0))
-                out.append(nxop)
+                    out.append(nxop)
+                elif isinstance(nxop, var):
+                    nxop.eval(out, pool, None, 0)
+                else:
+                    out.append(nxop)
             raise opex_scan_bypass()
 
 class expr_rng(expr_sym):
@@ -161,7 +154,30 @@ class stack_rel(stack_sym):
         self.stack_pop(pool)
 
 class rtab_sym(opelem):
-    pass
+    
+    def _rtab(self, pool):
+        rtab = pool.get_base('__evm_rtab', [])
+        pool.base['__evm_rtab'] = rtab
+        return rtab
+        
+    def rtab_push(self, pool, name):
+        rtab = self._rtab(pool)
+        itm = {'name': name, 'tab':[]}
+        rtab.append(itm)
+    
+    def rtab_pop(self, pool):
+        rtab = self._rtab(pool)
+        rtab.pop()
+
+class var(rtab_sym):
+    
+    def __init__(self, id):
+        super(var, self).__init__('var_' + id)
+        self.name = id
+    
+    def eval(self, out, pool, srci, t = 0):
+        super(var, self).eval(out, pool, srci, t)
+        self.outself(out, t)
 
 class rtab_reg(rtab_sym):
     
@@ -170,12 +186,10 @@ class rtab_reg(rtab_sym):
     
     def eval(self, out, pool, srci, t = 0):
         super(rtab_reg, self).eval(out, pool, srci, t)
-        if t > 0:
-            return
-        nxop = srci.peek
-        if not isinstance(nxop, var):
+        prevop = out.pop()
+        if not isinstance(prevop, var):
             raise opex_error_syntax()
-        vname = nxop.name
+        self.rtab_push(pool, prevop.name)
 
 if __name__ == '__main__':
     from evmac import _eval_seq, _eval_scanner, _base_pool
