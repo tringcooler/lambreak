@@ -191,6 +191,19 @@ class rtab_reg(rtab_sym):
             raise opex_error_syntax()
         self.rtab_push(pool, prevop.name)
 
+class find_comb(opelem):
+    
+    def __init__(self):
+        pass
+
+class appl(opelem):
+    
+    def __init__(self):
+        super(appl, self).__init__('appl')
+    
+    def eval(self, out, pool, srci, t = 0):
+        super(appl, self).eval(out, pool, srci, t)
+
 if __name__ == '__main__':
     from evmac import _eval_seq, _eval_scanner, _base_pool
     def test():
